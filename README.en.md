@@ -55,9 +55,9 @@ spoon.DesktopMove:move(1, hs.window.focusedWindow())
 spoon.DesktopMove:stop()                       -- stop keyboard handling and pending timers
 ```
 
-Call `:start()` again after changing modifiers. Only the configured arrow key combinations are intercepted. Key repeats are ignored. Other keys, mouse input, and trackpad gestures pass through. macOS shortcut and Mission Control settings are not modified.
+Call `:start()` again after changing modifiers. Only the configured arrow key combinations are intercepted. Automatic key repeats are ignored, while up to eight separate arrow presses during a transition are queued for the same window. The `fn` flag macOS may set for arrow keys is ignored. Other keys, mouse input, and trackpad gestures pass through. macOS shortcut and Mission Control settings are not modified.
 
-`lastResult` contains `window`, `source`, `target`, and `complete`. Completion becomes true after the move and desktop switch are confirmed.
+`lastResult` contains `window`, `source`, `target`, and `complete`. Completion becomes true after the move, destination Space, and focus remain stable for 0.5 seconds. A failed move or Space switch cancels queued input.
 
 ## Troubleshooting
 

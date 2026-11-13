@@ -1,7 +1,7 @@
 -- macOS 27: native window moves and WindowManager accessibility, no mouse input.
 local M = {
     name = "DesktopMove",
-    version = "1.0.0",
+    version = "1.1.0",
     author = "jjeabydev",
     homepage = "https://github.com/jjeabydev/hammerspoon-desktop-move",
     license = "MIT - https://opensource.org/licenses/MIT",
@@ -9,6 +9,7 @@ local M = {
     busy = false,
     timers = {},
     capturedKeys = {},
+    pending = {},
 }
 local spoonPath = hs.spoons.scriptPath()
 local spaces = require("hs.spaces")
@@ -110,27 +111,39 @@ local function switchMissionControl(target, callback)
         end, 3)
     end, 3)
 end
+local drain
+local function stableFollow(window, screen, target, callback, timeout)
+    local stableSince
+    poll(function()
+        local focused = hs.window.focusedWindow()
+        local ready = spaces.activeSpaceOnScreen(screen) == target
+            and onSpace(window, target) and focused and focused:id() == window:id()
+        if not ready then stableSince = nil; return false end
+        stableSince = stableSince or hs.timer.secondsSinceEpoch()
+        return hs.timer.secondsSinceEpoch() - stableSince >= 0.5
+    end, callback, timeout)
+end
+local function finishMove(cancelPending)
+    M.busy, M.activeWindow = false, nil
+    if cancelPending then M.pending = {} end
+    if drain then drain() end
+end
 local function switchSpace(target, window, callback)
     local uuid = spaces.spaceDisplay(target)
     local screen
     for _, s in ipairs(hs.screen.allScreens()) do if s:getUUID() == uuid then screen = s end end
     if not screen then return callback(nil, "target display disconnected") end
-    -- Focusing a window on another desktop lets macOS perform its normal transition.
-    -- Keep Mission Control as a fallback when automatic app switching is disabled.
     window:focus()
-    poll(function() return spaces.activeSpaceOnScreen(screen) == target end, function(active)
+    stableFollow(window, screen, target, function(active, followError)
         if active then return callback(true) end
-        switchMissionControl(target, callback)
-    end, 1)
+        switchMissionControl(target, function(switched, switchError)
+            if not switched then return callback(nil, switchError or followError or "space switch failed") end
+            window:focus()
+            stableFollow(window, screen, target, callback, 2)
+        end)
+    end, 1.2)
 end
---- DesktopMove:move(direction[, window])
---- Moves a standard window to the adjacent user desktop and follows it.
---- direction must be -1 (left) or 1 (right).
-function M:move(direction, selectedWindow)
-    if direction ~= -1 and direction ~= 1 then
-        error("direction must be -1 or 1", 2)
-    end
-    if M.busy then return end
+local function runMove(direction, selectedWindow)
     if not hs.accessibilityState() then return report("Hammerspoon의 손쉬운 사용 권한이 꺼져 있습니다.") end
     if not native or not native.available() then return report("창 이동 모듈을 불러올 수 없습니다.", loadError) end
     local w = selectedWindow or hs.window.focusedWindow()
@@ -149,25 +162,61 @@ function M:move(direction, selectedWindow)
     end
     local target = index and desktops[index + direction]
     if not target then return report(direction < 0 and "왼쪽에 데스크톱이 없습니다." or "오른쪽에 데스크톱이 없습니다.") end
-    M.busy = true
+    M.busy, M.activeWindow = true, w
     local result = {window = w:id(), source = current, target = target, complete = false}
     M.lastResult = result
     local submitted, moveError = native.move(w:id(), target)
-    if not submitted then M.busy = false; return report("창 이동 요청에 실패했습니다.", moveError) end
+    if not submitted then
+        report("창 이동 요청에 실패했습니다.", moveError)
+        finishMove(true)
+        return false
+    end
     poll(function() return onSpace(w, target) end, function(moved, errorMessage)
         if not moved then
-            M.busy = false
-            return report("창이 이동하지 않았습니다. Hammerspoon 콘솔을 확인해 주세요.", errorMessage or "window move timed out")
+            report("창이 이동하지 않았습니다. Hammerspoon 콘솔을 확인해 주세요.", errorMessage or "window move timed out")
+            return finishMove(true)
         end
         switchSpace(target, w, function(switched, switchError)
-            M.busy = false
-            if not switched then return report("창은 이동했지만 화면 전환이 실패했습니다.", switchError) end
+            if not switched then
+                report("창은 이동했지만 화면 전환이 실패했습니다.", switchError)
+                return finishMove(true)
+            end
             local focused = hs.window.focusedWindow()
             if not focused or focused:id() ~= w:id() then w:focus() end
             result.complete = onSpace(w, target)
             log.i(string.format("Window %d: Space %d → %d", w:id(), current, target))
+            finishMove(false)
         end)
     end, 3, 0.01)
+    return true
+end
+--- DesktopMove:move(direction[, window])
+--- Moves a standard window to the adjacent user desktop and follows it.
+--- direction must be -1 (left) or 1 (right).
+function M:move(direction, selectedWindow)
+    if direction ~= -1 and direction ~= 1 then error("direction must be -1 or 1", 2) end
+    if M.busy then
+        if #M.pending >= 8 then
+            log.e("DesktopMove input queue is full; dropping key press")
+            return
+        end
+        table.insert(M.pending, {direction = direction, window = M.activeWindow or selectedWindow or hs.window.focusedWindow()})
+        return
+    end
+    runMove(direction, selectedWindow)
+    if not M.busy and drain then drain() end
+end
+drain = function()
+    if M.busy or M.drainTimer or #M.pending == 0 then return end
+    local timer
+    timer = hs.timer.doEvery(0.05, function()
+        timer:stop()
+        M.timers[timer], M.drainTimer = nil, nil
+        local request = table.remove(M.pending, 1)
+        if request then M:move(request.direction, request.window) end
+    end)
+    M.drainTimer = timer
+    M.timers[timer] = true
 end
 --- DesktopMove:stop() -> self
 --- Stops keyboard interception and cancels pending polling timers.
@@ -175,7 +224,8 @@ function M:stop()
     for timer in pairs(M.timers) do timer:stop() end
     M.timers = {}
     if M.keyboard then M.keyboard:stop() end
-    M.capturedKeys = {}
+    M.capturedKeys, M.pending = {}, {}
+    M.activeWindow, M.drainTimer = nil, nil
     M.busy = false
     return self
 end
@@ -198,7 +248,7 @@ function M:start()
             return false
         end
         local flags = event:getFlags()
-        for _, modifier in ipairs({"ctrl", "shift", "cmd", "alt", "fn"}) do
+        for _, modifier in ipairs({"ctrl", "shift", "cmd", "alt"}) do
             if (not not flags[modifier]) ~= (not not wanted[modifier]) then return false end
         end
         M.capturedKeys[code] = true
@@ -207,6 +257,7 @@ function M:start()
         end
         return true
     end):start()
+    if not M.keyboard:isEnabled() then report("키보드 감지가 시작되지 않았습니다. Hammerspoon의 손쉬운 사용 권한을 확인해 주세요.") end
     return self
 end
 

@@ -88,15 +88,19 @@ local function fixture(options)
                 local tap = {callback = callback}
                 function tap:start() self.started = true; return self end
                 function tap:stop() self.started = false end
+                function tap:isEnabled() return self.started end
                 return tap
             end,
         },
     }
     state.focused = window
     function state:tick(seconds)
-        self.now = self.now + seconds
-        local pending = {table.unpack(self.timers)}
-        for _, timer in ipairs(pending) do if not timer.stopped then timer.callback() end end
+        local deadline = self.now + seconds
+        while self.now < deadline do
+            self.now = math.min(deadline, self.now + 0.05)
+            local pending = {table.unpack(self.timers)}
+            for _, timer in ipairs(pending) do if not timer.stopped then timer.callback() end end
+        end
     end
     function state:key(code, kind, flags, repeated)
         return {
@@ -182,14 +186,24 @@ end)
 test("Mission Control fallback selects correct desktop including fullscreen index", function()
     local spoon, state = fixture({fallback = true})
     spoon:move(1)
-    state:tick(1.1)
+    state:tick(2)
     check(state.active == 20 and not state.mc and spoon.lastResult.complete, "fallback failed")
+end)
+
+test("arrow presses during a transition queue for the same window", function()
+    local spoon, state, window = fixture()
+    spoon:move(1)
+    spoon:move(1)
+    check(state.moves == 1 and #spoon.pending == 1, "second key press was not queued")
+    state:tick(2)
+    check(state.moves == 2 and state.membership[1] == 30 and spoon.lastResult.complete,
+        "queued move did not complete for the same window")
 end)
 
 test("Mission Control press failure leaves move incomplete and closes UI", function()
     local spoon, state = fixture({fallback = true, pressError = true})
     spoon:move(1)
-    state:tick(1.1)
+    state:tick(2)
     check(not state.mc and not spoon.busy and not spoon.lastResult.complete, "fallback failure stuck")
     check(state.membership[1] == 20 and #state.alerts == 1, "moved window should remain at target")
 end)

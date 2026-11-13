@@ -59,9 +59,9 @@ spoon.DesktopMove:move(1, hs.window.focusedWindow())
 spoon.DesktopMove:stop()                       -- 키보드 처리와 진행 중 타이머 중지
 ```
 
-`modifiers` 변경 후 `:start()`를 다시 호출합니다. 기본 단축키에서는 키 반복을 무시하고, 다른 키 입력과 마우스·트랙패드 이벤트는 그대로 통과시킵니다. macOS 단축키와 Mission Control 설정은 변경하지 않습니다.
+`modifiers` 변경 후 `:start()`를 다시 호출합니다. 기본 단축키에서는 키 자동 반복을 무시하지만, 전환 중 별도로 누른 화살표 입력은 같은 창에 최대 8회까지 순서대로 적용합니다. macOS가 화살표 키에 설정하는 `fn` 플래그는 무시합니다. 다른 키 입력과 마우스·트랙패드 이벤트는 그대로 통과시킵니다. macOS 단축키와 Mission Control 설정은 변경하지 않습니다.
 
-이동 결과는 `spoon.DesktopMove.lastResult`의 `window`, `source`, `target`, `complete`에서 확인할 수 있습니다. `complete`는 창 이동과 화면 전환이 확인되었을 때 true입니다.
+이동 결과는 `spoon.DesktopMove.lastResult`의 `window`, `source`, `target`, `complete`에서 확인할 수 있습니다. `complete`는 창 이동과 대상 데스크톱, 포커스가 0.5초 동안 안정된 것을 확인했을 때 true입니다. 이동 또는 화면 전환이 실패하면 대기 중인 입력은 취소합니다.
 
 ## 문제 해결
 
