@@ -4,7 +4,7 @@
 
 - Queue up to eight separate arrow presses during a move and keep them bound to the original window.
 - Confirm the destination Space and window focus remain stable before reporting completion.
-- Accept the `fn` flag macOS may set for arrow keys and report when the keyboard event tap is disabled.
+- Accept the `fn` flag macOS may set for arrow keys, report when the keyboard event tap is disabled, and show a ready alert when it starts.
 
 ## 1.0.0
 

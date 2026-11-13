@@ -257,7 +257,12 @@ function M:start()
         end
         return true
     end):start()
-    if not M.keyboard:isEnabled() then report("키보드 감지가 시작되지 않았습니다. Hammerspoon의 손쉬운 사용 권한을 확인해 주세요.") end
+    if not M.keyboard:isEnabled() then
+        report("키보드 감지가 시작되지 않았습니다. Hammerspoon의 손쉬운 사용 권한을 확인해 주세요.")
+        return self
+    end
+    hs.alert.show("창 이동 준비됨: Ctrl+Shift+←/→", 2)
+    log.i("Ready: Ctrl+Shift+Left/Right")
     return self
 end
 
