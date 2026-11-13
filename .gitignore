@@ -1,0 +1,4 @@
+*.so
+*.so.new
+dist/
+.DS_Store
