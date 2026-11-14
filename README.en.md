@@ -1,6 +1,8 @@
 # DesktopMove.spoon
 
-Move the focused window to an adjacent macOS desktop and follow it with Hammerspoon.
+DesktopMove is a Hammerspoon Spoon that moves the focused window to the previous or next macOS desktop on the same display, then follows it by switching desktops and restoring focus.
+
+It combines a Lua Spoon with a native macOS bridge: Lua handles shortcuts and desktop switching, while the native module moves the window between desktops. This is not a pure-Lua plugin. The native module depends on private SkyLight APIs.
 
 [한국어](README.md)
 
@@ -11,14 +13,16 @@ Move the focused window to an adjacent macOS desktop and follow it with Hammersp
 
 Moves between normal desktops on the window's current display, skipping fullscreen Spaces. It stops at either end and rejects fullscreen windows and windows assigned to all desktops. After confirming the move, it focuses the window. Mission Control is used as a fallback if macOS does not switch desktops when the window is focused.
 
-## Requirements
+## Supported environment
 
-- macOS and Hammerspoon. The original configuration was used on **macOS 27.2.1 / Hammerspoon 1.1.1**; other versions have not been verified.
-- Accessibility permission for Hammerspoon in System Settings → Privacy & Security → Accessibility.
-- At least two normal desktops on the same display.
-- Xcode or Command Line Tools to build from source.
+- **Verified on:** Apple Silicon (arm64), macOS 27.2.1, and Hammerspoon 1.1.1.
+- The release module is a universal binary containing arm64 and x86_64 slices. Runtime behavior on Intel Macs has not been verified.
+- Other macOS and Hammerspoon versions have not been verified, so compatibility is not guaranteed. In particular, macOS updates may change the private SkyLight APIs used by the native module.
+- Hammerspoon needs Accessibility permission in System Settings → Privacy & Security → Accessibility to handle shortcuts and control windows. Screen Recording permission is not required.
+- The display containing the window needs at least two normal desktops. Fullscreen desktops are skipped; fullscreen windows and windows assigned to all desktops cannot be moved.
+- Xcode or Command Line Tools are required to build from source.
 
-The native bridge uses private SkyLight APIs, which can change with macOS updates. Unsupported systems show an alert. Screen Recording permission is not required. Notifications currently use Korean; diagnostic logs use English.
+If the native module cannot load or permission is unavailable, DesktopMove shows an alert. Notifications are currently in Korean; diagnostic logs are in English.
 
 ## Install
 
