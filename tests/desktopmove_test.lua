@@ -244,7 +244,7 @@ test("stop cancels pending timers and releases keyboard state", function()
     state:tick(5)
     check(not spoon.keyboard.started and not spoon.busy, "stop failed")
     check(next(spoon.timers) == nil and next(spoon.capturedKeys) == nil, "state leaked")
-    check(#state.alerts == 0 and not spoon.lastResult.complete, "cancelled callback ran")
+    check(#state.alerts == 1 and not spoon.lastResult.complete, "stop produced an unexpected alert or ran a cancelled callback")
 end)
 
 package.loadlib = originalLoadlib

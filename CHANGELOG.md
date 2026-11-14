@@ -2,7 +2,7 @@
 
 ## 1.1.1
 
-- Align window-move tests with the 0.5-second stable focus confirmation.
+- Align regression tests with stable move completion and the startup readiness alert.
 
 ## 1.1.0
 
