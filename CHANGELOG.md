@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.1
+
+- Align window-move tests with the 0.5-second stable focus confirmation.
+
 ## 1.1.0
 
 - Queue up to eight separate arrow presses during a move and keep them bound to the original window.

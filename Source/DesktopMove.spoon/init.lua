@@ -1,7 +1,7 @@
 -- macOS 27: native window moves and WindowManager accessibility, no mouse input.
 local M = {
     name = "DesktopMove",
-    version = "1.1.0",
+    version = "1.1.1",
     author = "jjeabydev",
     homepage = "https://github.com/jjeabydev/hammerspoon-desktop-move",
     license = "MIT - https://opensource.org/licenses/MIT",

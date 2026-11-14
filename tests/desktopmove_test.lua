@@ -125,6 +125,7 @@ end
 test("move right skips fullscreen Space and follows window", function()
     local spoon, state = fixture()
     spoon:move(1)
+    state:tick(0.6)
     check(state.moves == 1 and state.active == 20, "wrong target")
     check(spoon.lastResult.complete and not spoon.busy, "move did not complete")
 end)
@@ -133,6 +134,7 @@ test("move left uses window membership and explicit window", function()
     local spoon, state, window = fixture()
     state.membership, state.focused = {20}, nil
     spoon:move(-1, window)
+    state:tick(0.6)
     check(state.active == 10 and spoon.lastResult.complete, "left move failed")
 end)
 
